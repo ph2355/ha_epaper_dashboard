@@ -1,0 +1,167 @@
+esphome:
+  name: ha-demo
+  friendly_name: HA Demo
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "!secret api_encryption_key"
+  on_client_connected:
+    then:
+      - logger.log: "Home Assistant API client connected!"
+  on_client_disconnected:
+    then:
+      - logger.log: "Home Assistant API client disconnected!"
+
+ota:
+  - platform: esphome
+    password: "!secret ota_password"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Ha-Demo Fallback Hotspot"
+    password: "JyHOl5Y8Zx3Q"
+
+captive_portal:
+    
+
+sensor:
+  - platform: homeassistant
+    id: indoor_temperature
+    entity_id: sensor.s3_01a6_temperature_degc
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "Indoor temperature updated: %.2f°C"
+            args: ['x']
+  
+  - platform: homeassistant
+    id: outdoor_temperature
+    entity_id: sensor.s3_01a3_temperature_degc
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "Outdoor temperature updated: %.2f°C"
+            args: ['x']
+  
+  - platform: homeassistant
+    id: indoor_humidity
+    entity_id: sensor.s3_01a6_humidity
+    internal: true
+  
+  - platform: homeassistant
+    id: outdoor_humidity
+    entity_id: sensor.s3_01a3_humidity
+    internal: true
+  
+  - platform: homeassistant
+    id: dew_point
+    entity_id: sensor.thermal_comfort_dew_point
+    internal: true
+
+  - platform: homeassistant
+    id: dew_point_2
+    entity_id: sensor.thermal_comfort_dew_point_2
+    internal: true
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+button:
+  - platform: template
+    name: "Refresh Display"
+    on_press:
+      then:
+        - component.update: main_display
+
+# Define fonts for displaying text
+font:
+  - file: "gfonts://Roboto@700"
+    id: font_xlarge
+    size: 96
+  - file: "gfonts://Roboto@700"
+    id: font_large
+    size: 80
+  - file: "gfonts://Roboto@700"
+    id: font_medium
+    size: 24
+  - file: "gfonts://Roboto@700"
+    id: font_small
+    size: 16
+
+spi:
+  clk_pin: GPIO8
+  mosi_pin: GPIO10
+
+display:
+  - platform: waveshare_epaper
+    id: main_display
+    cs_pin: GPIO3
+    dc_pin: GPIO5
+    busy_pin: 
+      number: GPIO4
+      inverted: true
+    reset_pin: GPIO2
+    model: 7.50inv2p
+    update_interval: 60s
+    full_update_every: 60
+    lambda: |-
+      // Time (top left)
+      it.strftime(50, 20, id(font_xlarge), "%H:%M", id(ha_time).now());
+      
+      // Date (top right) - format day without leading zero
+      auto time = id(ha_time).now();
+      it.printf(350, 20, id(font_large), "%s%d %s", 
+                time.strftime("%a, ").c_str(), 
+                time.day_of_month, 
+                time.strftime("%b").c_str());
+      
+      // Indoor Temperature
+      it.printf(50, 120, id(font_medium), "Indoor:");
+      if (id(indoor_temperature).has_state()) {
+        it.printf(50, 150, id(font_xlarge), "%.1f°C", id(indoor_temperature).state);
+      }
+      
+      // Outdoor Temperature
+      it.printf(450, 120, id(font_medium), "Outdoor:");
+      if (id(outdoor_temperature).has_state()) {
+        it.printf(450, 150, id(font_xlarge), "%.1f°C", id(outdoor_temperature).state);
+      }
+      
+      // Indoor Humidity
+      it.printf(50, 290, id(font_medium), "Indoor Humidity:");
+      if (id(indoor_humidity).has_state()) {
+        it.printf(50, 320, id(font_xlarge), "%.1f%%", id(indoor_humidity).state);
+        
+        // Display dew point
+        if (id(dew_point_2).has_state()) {
+          it.printf(50, 420, id(font_medium), "Dew Point: %.1f°C", id(dew_point_2).state);
+        }
+      }
+      
+      // Outdoor Humidity
+      it.printf(450, 290, id(font_medium), "Outdoor Humidity:");
+      if (id(outdoor_humidity).has_state()) {
+        it.printf(450, 320, id(font_xlarge), "%.1f%%", id(outdoor_humidity).state);
+
+        // Display dew point
+        if (id(dew_point).has_state()) {
+          it.printf(450, 420, id(font_medium), "Dew Point: %.1f°C", id(dew_point).state);
+        }
+      }
+      
