@@ -5,3 +5,4 @@
 /secrets.yaml
 firmware.bin
 venv/
+.DS_Store
