@@ -1,6 +1,6 @@
 # ESP Home epaper display
 
-![Picture of display](v1.png)
+![Picture of display](v1.jpg)
 
 ## Compiling and running
 
